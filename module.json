@@ -1,0 +1,14 @@
+{
+  "id": "doomsday-clock",
+  "title": "Doomsday Clock",
+  "description": "A simple Foundry VTT clock with +10m, +1h, New Day, and multiple alarms.",
+  "version": "0.0.1",
+  "compatibility": { "minimum": "11", "verified": "13" },
+  "esmodules": ["scripts/clock.js"],
+  "styles": ["styles/clock.css"],
+  "templateVersion": 2,
+  "authors": [{ "name": "You" }],
+  "url": "https://github.com/iraedei/doomsday-clock",
+  "manifest": "https://raw.githubusercontent.com/iraedei/doomsday-clock/main/module.json",
+  "download": "https://github.com/iraedei/doomsday-clock/archive/refs/heads/main.zip"
+}

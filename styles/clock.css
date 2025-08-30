@@ -1,0 +1,110 @@
+/* Doomsday Clock — styles/clock.css */
+
+/* Keep the window clean */
+#doomsday-clock-app .window-content {
+  overflow: hidden !important;
+}
+
+#doomsday-clock-app { background: transparent; box-shadow: none; border: 0; }
+#doomsday-clock-app .window-content { background: transparent !important; }
+
+/* Anchor sits exactly at the face center; children rotate around it */
+.dc-anchor{
+  position:absolute;
+  left: calc((100% - var(--rail)) * var(--dial-cx));
+  top:  calc(var(--dial-cy) * 1%);
+  width:0; height:0;             /* zero-size anchor point */
+  z-index:2;
+  pointer-events:none;
+}
+
+/* Face + layout knobs */
+.clock-wrap{
+  position: relative;
+  width: 340px; height: 340px; overflow: hidden; user-select: none;
+  --dial-cx: 0.88; /*0.30615;              /* 313.5 / 1024 (horizontal center of dial) */
+  --dial-cy: 36.38;  /*36.914;               /* 378 / 1024 * 100 (vertical center %) */
+  --hand-scale: 0.42;              /* global hand scale */
+  
+  --ui-scale: 1.00;            /* 1.00 = 100%, 1.20 = 120%, 0.85 = 85% */
+  width:  calc(340px * var(--ui-scale));
+  height: calc(340px * var(--ui-scale));
+  --rail-base: 118;                                /* px */
+  --rail: 118px;                   /* button column */
+  
+  /* If you want hands to scale with the module, tie them to ui-scale: */
+  --hand-scale: calc(0.42 * var(--ui-scale));
+}
+
+/* Optional: scale button sizing too so the rail feels consistent */
+.clock-controls button{
+  width: 150%;
+  padding: calc(6px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  font-size: calc(12px * var(--ui-scale));
+  border-radius: calc(8px * var(--ui-scale));
+}
+
+
+/* Face left-justified, cropped by rail on right */
+.clock-face{
+  position:absolute; top:0; bottom:0; left:0; right:var(--rail);
+  background-image:url("/modules/doomsday-clock/assets/clock_bg.png");
+  background-position:left center; background-size:auto 100%; z-index:1;
+}
+
+/* Common hand: CSS owns position; transform-origin only; transform uses angle var */
+.dc-hand{
+  position:absolute; z-index:4; pointer-events:none;
+  background-repeat:no-repeat; background-position:left center; background-size:100% 100%;
+}
+
+/* Hour hand — base sits at (faceCenterX, faceCenterY) because we subtract pivot in left */
+.dc-hour{
+  --len: 120px;                             /* base length before scaling */
+  --h:   calc(28px * var(--hand-scale));    /* thickness */
+  --pivot: calc(33px * var(--hand-scale));  /* 33 px inside the image */
+  left: calc((100% - var(--rail)) * var(--dial-cx) - var(--pivot));
+  top:  calc(var(--dial-cy) * 1% - var(--h)/2);
+  width: calc(var(--len) * var(--hand-scale));
+  height: var(--h);
+  transform-origin: var(--pivot) 50%;
+  transform: rotate(var(--angle, -90deg));  /* only rotation; no translate */
+  background-image:url("/modules/doomsday-clock/assets/hour_hand.png");
+}
+
+/* Minute hand — same rules */
+.dc-minute{
+  --len: 120px;
+  --h:   calc(28px * var(--hand-scale));
+  --pivot: calc(33px * var(--hand-scale));
+  left: calc((100% - var(--rail)) * var(--dial-cx) - var(--pivot));
+  top:  calc(var(--dial-cy) * 1% - var(--h)/2);
+  width: calc(var(--len) * var(--hand-scale));
+  height: var(--h);
+  transform-origin: var(--pivot) 50%;
+  transform: rotate(var(--angle, -90deg));
+  background-image:url("/modules/doomsday-clock/assets/minute_hand.png");
+}
+
+/* Buttons (unchanged) */
+.clock-controls.dock-right{
+  position:absolute; top:12px; right:8px; width:calc(var(--rail) - 16px);
+  display:flex; flex-direction:column; gap:6px; z-index:5;
+}
+
+
+.clock-controls button{
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #6c63ff;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+.clock-controls button:hover{
+  filter: brightness(1.08);
+}
