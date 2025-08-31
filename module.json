@@ -2,7 +2,7 @@
   "id": "doomsday-clock",
   "title": "Doomsday Clock",
   "description": "A simple Foundry VTT clock with +10m, +1h, New Day, and multiple alarms.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "compatibility": { "minimum": "11", "verified": "13" },
   "esmodules": ["scripts/clock.js"],
   "styles": ["styles/clock.css"],
