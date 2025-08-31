@@ -1,5 +1,5 @@
 // scripts/clock.js
-const DC_ID   = "doomsday-clock";
+const DC_ID = "doomsday-clock";
 const CHANNEL = `module.${DC_ID}`;
 
 let totalMinutes = 0; // start at 00:00
@@ -10,9 +10,8 @@ Hooks.once("init", () => {
     scope: "world",
     config: false,
     type: Number,
-    default: 0, // midnight
+    default: 0,
     onChange: (value) => {
-      // Fires on every user when the setting changes (GM or API)
       totalMinutes = Math.max(0, Number(value) || 0);
       const app = DoomsdayClock.instance();
       if (app.rendered) app._draw();
@@ -25,7 +24,6 @@ Hooks.once("ready", () => {
   const saved = Number(game.settings.get(DC_ID, "totalMinutes"));
   totalMinutes = Number.isFinite(saved) ? saved : 0;
 
-  // Scene Controls button
   Hooks.on("getSceneControlButtons", (controls) => {
     controls.push({
       name: "doomsdayclock",
@@ -42,10 +40,8 @@ Hooks.once("ready", () => {
     });
   });
 
-  // Open the clock window for ALL users
   DoomsdayClock.instance().render(true);
 
-  // Instant replication channel (in addition to settings onChange)
   game.socket.on(CHANNEL, (msg) => {
     if (!msg || msg.type !== "sync") return;
     DoomsdayClock.instance()._setTime(msg.value);
@@ -55,105 +51,154 @@ Hooks.once("ready", () => {
 /* ── Application ── */
 class DoomsdayClock extends Application {
   static #inst;
-  static _didAutoResetSync = false; // run Reset→Sync once per session after first render
+  static _didAutoResetSync = false;
 
-  static instance() { return this.#inst ??= new DoomsdayClock(); }
+  static instance() {
+    return this.#inst ??= new DoomsdayClock();
+  }
 
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       id: "doomsday-clock-app",
       title: "Doomsday Clock",
       template: `modules/${DC_ID}/templates/clock.html`,
-      width: 340,
-      height: 340,
+      width: 380,
+      height: 420,
       popOut: true,
       resizable: false
     });
   }
 
-  async _renderInner(data, options) {
-    const html = await super._renderInner(data, options);
+  _lastHourDeg = 0;
+  _lastMinuteDeg = 0;
+
+  activateListeners(html) {
+    super.activateListeners(html);
 
     // GM-only controls
-    if (!game.user.isGM) html.find(".clock-controls").hide();
+    if (!game.user.isGM) html.find(".control-panel").hide();
 
-    // Wire buttons
-    const on = (a, fn) => html.find(`[data-action='${a}']`).off("click").on("click", fn);
-    on("-5m", () => this._bump(-5));
+    // Wire buttons (safe re-bind on each render)
+    const on = (action, fn) => {
+      html.find(`[data-action='${action}']`).off("click").on("click", fn);
+    };
+    on("+1h", () => this._bump(+60));
     on("-1h", () => this._bump(-60));
     on("+5m", () => this._bump(+5));
-    on("+1h", () => this._bump(+60));
+    on("-5m", () => this._bump(-5));
     on("reset", () => this._reset());
     on("sync",  () => this._sync());
+    on("+1d", () => this._bumpDays(+1));
+    on("-1d", () => this._bumpDays(-1));
+    on("day-reset", () => this._dayReset());
 
-    // First draw
+    // First paint after each render
     this._draw();
 
-    // After first render of the session: Reset then Sync (GM only)
+    // One-time auto Reset→Sync for the GM
     if (game.user.isGM && !DoomsdayClock._didAutoResetSync) {
       DoomsdayClock._didAutoResetSync = true;
-      await this._reset();
-      await this._sync();
+      this._reset().then(() => this._sync());
     }
-
-    return html;
   }
 
-  /* Local setter used by socket + settings onChange */
   _setTime(next) {
     const n = Math.max(0, Number(next) || 0);
+    const delta = n - totalMinutes;
     totalMinutes = n;
-    this._draw();
+    this._draw(delta);
   }
 
-  /* GM: adjust time, persist, and broadcast */
+
   _bump(delta) {
     if (!game.user.isGM) return;
     const next = Math.max(0, (Number(totalMinutes) || 0) + delta);
-
-    // Immediate local update
     this._setTime(next);
-
-    // Persist → triggers onChange on all users
     game.settings.set(DC_ID, "totalMinutes", next);
-
-    // Broadcast → instant client update even before settings round-trip
     game.socket.emit(CHANNEL, { type: "sync", value: next });
   }
 
-  /* GM: Reset to midnight, persist, broadcast */
   async _reset() {
     if (!game.user.isGM) return;
-    const next = 0;
+    const next = totalMinutes - (totalMinutes % 1440); // start of current day
     this._setTime(next);
     await game.settings.set(DC_ID, "totalMinutes", next);
     game.socket.emit(CHANNEL, { type: "sync", value: next });
   }
 
-  /* GM: Force clients to re-sync to current value */
   async _sync() {
     if (!game.user.isGM) return;
     const val = Number(totalMinutes) || 0;
-    // Touch the setting (some builds still fire onChange even for same value)
     await game.settings.set(DC_ID, "totalMinutes", val);
-    // And always push via socket for immediate replication
     game.socket.emit(CHANNEL, { type: "sync", value: val });
   }
 
-  /* Draw: set rotation angles only (placement is 100% CSS) */
-  _draw() {
+  _bumpDays(delta) {
+    const deltaMinutes = delta * 1440;
+    this._bump(deltaMinutes);
+  }
+
+async _dayReset() {
+  if (!game.user.isGM) return;
+  const cur = Math.max(0, Number(totalMinutes) || 0);
+  const next = Math.floor(cur / 1440) * 1440; // 00:00 same day
+  this._setTime(next);
+  await game.settings.set(DC_ID, "totalMinutes", next);
+  game.socket.emit(CHANNEL, { type: "sync", value: next });
+}
+
+
+  _normalizeRotation(prev, next, forward) {
+    if (forward) {
+      while (next < prev) next += 360;
+    } else {
+      while (next > prev) next -= 360;
+    }
+    return next;
+  }
+
+  _draw(delta = 0) {
+    // Minutes → hours/minutes within the day
     const mod = ((totalMinutes % 1440) + 1440) % 1440;
     const h = Math.floor(mod / 60);
     const m = mod % 60;
 
-    const minuteDeg = m * 6;                    // 6° per minute
-    const hourDeg   = (h % 12) * 30 + m * 0.5;  // 30°/hr + 0.5°/min
-    const base = -90;                            // art points right → "up" is -90°
+    // Grab elements once
+    const el     = this.element;
+    const minEl  = el.find(".minute-hand")[0];
+    const hrEl   = el.find(".hour-hand")[0];
+    const dayEl  = el.find(".day-counter")[0]; // was .day-label (incorrect)
 
-    const el = this.element;
-    const minEl = el.find(".dc-minute")[0];
-    const hrEl  = el.find(".dc-hour")[0];
-    if (minEl) minEl.style.setProperty("--angle", `${base + minuteDeg}deg`);
-    if (hrEl)  hrEl.style.setProperty("--angle",  `${base + hourDeg}deg`);
+    // Target angles (0–360), art points right → add base later
+    const rawMinuteDeg = m * 6;                       // 6° per minute
+    const rawHourDeg   = (h % 12) * 30 + m * 0.5;     // 30°/hr + 0.5°/min
+    const base = -90;
+
+    // First-run init of continuity state
+    if (!Number.isFinite(this._lastMinuteDeg)) this._lastMinuteDeg = rawMinuteDeg;
+    if (!Number.isFinite(this._lastHourDeg))   this._lastHourDeg   = rawHourDeg;
+
+    // Direction hint from caller (positive=forward, negative=backward)
+    const forward = delta >= 0;
+
+    // Normalize to intended direction (shortest path respecting sign)
+    const minuteDeg = this._normalizeRotation(this._lastMinuteDeg, rawMinuteDeg, forward);
+    const hourDeg   = this._normalizeRotation(this._lastHourDeg,   rawHourDeg,   forward);
+
+    // Persist continuity state
+    this._lastMinuteDeg = minuteDeg;
+    this._lastHourDeg   = hourDeg;
+
+    // Paint
+    if (minEl) minEl.style.transform = `rotate(${base + minuteDeg}deg)`;
+    if (hrEl)  hrEl.style.transform  = `rotate(${base + hourDeg}deg)`;
+
+    // HUD: Day N
+    if (dayEl) {
+      const day = Math.floor(totalMinutes / 1440) + 1;
+      dayEl.textContent = `Day ${day}`;
+    }
   }
+
+
 }

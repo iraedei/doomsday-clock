@@ -1,15 +1,33 @@
-<div class="clock-wrap">
-  <div class="clock-face"></div>
-  <!-- Anchor at the dial center -->
-  <div class="dc-anchor">
-    <div class="dc-hand dc-hour"></div>
-    <div class="dc-hand dc-minute"></div>
-  </div>
+<div class="doomclock-wrap">
+  <section class="clock-box">
+    <div class="clock-face">
+      <div class="clock-hand hour-hand"></div>
+      <div class="clock-hand minute-hand"></div>
+    </div>
+    <div class="day-counter">Day 1</div>
+  </section>
 
-  <div class="clock-controls dock-right">
-    <button type="button" data-action="-5m">-5m</button>
-    <button type="button" data-action="-1h">-1h</button>
-    <button type="button" data-action="+5m">+5m</button>
-    <button type="button" data-action="+1h">+1h</button>
-  </div>
+   <!-- Button Section  -->
+  <section class="control-panel">
+    <!-- Time Control Buttons  -->
+    <div class="button-group time-controls">
+      <div class="inc-controls">
+        <button type="button" data-action="+1h">+ Hour</button>
+        <button type="button"  data-action="+5m">+ 5 Min</button>
+      </div>
+      <div class="dec-controls">
+        <button type="button"  data-action="-1h">- Hour</button>
+        <button type="button"  data-action="-5m">- 5 Min</button>
+      </div>
+      <button type="button"  data-action="reset">Reset Time</button>
+      <button type="button"  data-action="sync">Sync</button>
+    </div>
+
+     <!-- Day Control Buttons  -->
+    <div class="button-group day-controls">
+      <button type="button"  data-action="+1d">+ Day</button>
+      <button type="button"  data-action="-1d">- Day</button>
+      <button type="button"  data-action="day-reset">Reset Day</button>
+    </div>
+  </section>
 </div>
